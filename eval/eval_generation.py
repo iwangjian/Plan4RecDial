@@ -106,13 +106,13 @@ def is_knowledge_hit(utterance, kg_obj, threshold=0.55):
             flag = True
     return flag
 
-def label_knowledge(utterance, kg_list):
+def label_knowledge(utterance, kg_list, lower_case=True):
     gold_knowledge = []
     all_objs = set()
     for triple in kg_list:
         assert len(triple) == 3
-        all_objs.add(triple[0])
-        all_objs.add(triple[2])
+        all_objs.add(triple[0].lower() if lower_case else triple[0])
+        all_objs.add(triple[2].lower() if lower_case else triple[2])
     for obj in all_objs:
         if is_knowledge_hit(utterance, obj):
             gold_knowledge.append(obj)
@@ -120,17 +120,19 @@ def label_knowledge(utterance, kg_list):
     return all_objs, gold_knowledge
 
 
-def load_data(fp, is_gold=False):
+def load_data(fp, is_gold=False, lower_case=True):
     samples = []
     all_knowledges = []
     gold_knowledges = []
     with open(fp, 'r', encoding='utf-8') as fr:
         for line in fr:
             sample = json.loads(line)
-            resp = [tok for tok in sample["response"]]   # token-level list
+            response = sample["response"].lower() if lower_case else sample["response"]
+            knowledge = sample["knowledge_graph"]
+            resp = [tok for tok in response]   # token-level list
             samples.append(resp)
             if is_gold:
-                all, gold = label_knowledge(sample["response"], sample["knowledge_graph"])
+                all, gold = label_knowledge(response, knowledge, lower_case=lower_case)
                 all_knowledges.append(all)
                 gold_knowledges.append(gold)
     if is_gold:

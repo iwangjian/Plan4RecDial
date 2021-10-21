@@ -9,15 +9,13 @@ from sklearn.metrics import accuracy_score
 LABEL_ACTION_PATH = "data/label_action.txt"
 LABEL_TOPIC_PATH = "data/label_topic.txt"
 
-def load_labels(fp):
+def load_labels(fp, lower_case=True):
     labels = {}
     with open(fp, 'r', encoding='utf-8') as fr:
         for idx, item in enumerate(fr):
-            labels[item.strip()] = idx
+            k = item.strip().lower() if lower_case else item.strip()
+            labels[k] = idx
     return labels
-
-ACTION_LABELS = load_labels(LABEL_ACTION_PATH)
-TOPIC_LABELS = load_labels(LABEL_TOPIC_PATH)
 
 
 def calc_accuracy(hyps, refs):
@@ -47,7 +45,7 @@ def calc_bi_accuracy(hyps, refs):
     return acc
 
 
-def load_data(fp, is_gold=False):
+def load_data(fp, is_gold=False, lower_case=True):
     ids = []
     actions = []
     topics = []
@@ -58,18 +56,26 @@ def load_data(fp, is_gold=False):
             if is_gold:
                 ids.append(int(sample["id"]))
             if "cur_action" in sample.keys() and "cur_topic" in sample.keys():
-                actions.append(sample["cur_action"])
-                topics.append(sample["cur_topic"])
+                act = sample["cur_action"].lower() if lower_case else sample["cur_action"]
+                topic = sample["cur_topic"].lower() if lower_case else sample["cur_topic"]
+                actions.append(act)
+                topics.append(topic)
             elif "plans" in sample.keys():
                 act = sample["plans"].split("[A]")[1].split("[T]")[0].strip()
                 topic = sample["plans"].split("[T]")[1].split("[A]")[0].strip()
+                if lower_case:
+                    act = act.lower()
+                    topic = topic.lower()
                 actions.append(act)
                 topics.append(topic)
             else:
                 raise KeyError("No valid keys!")
     assert len(actions) == len(topics)
-    action_ids = [ACTION_LABELS[act] for act in actions]
-    topic_ids = [TOPIC_LABELS[top] for top in topics]
+
+    action_labels = load_labels(LABEL_ACTION_PATH, lower_case=lower_case)
+    topic_labels = load_labels(LABEL_TOPIC_PATH, lower_case=lower_case)
+    action_ids = [action_labels[act] for act in actions]
+    topic_ids = [topic_labels[top] for top in topics]
 
     if is_gold:
         assert len(ids) == len(actions)
