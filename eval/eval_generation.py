@@ -128,10 +128,10 @@ def load_data(fp, is_gold=False, lower_case=True):
         for line in fr:
             sample = json.loads(line)
             response = sample["response"].lower() if lower_case else sample["response"]
-            knowledge = sample["knowledge_graph"]
             resp = [tok for tok in response]   # token-level list
             samples.append(resp)
             if is_gold:
+                knowledge = sample["knowledge_graph"]
                 all, gold = label_knowledge(response, knowledge, lower_case=lower_case)
                 all_knowledges.append(all)
                 gold_knowledges.append(gold)
