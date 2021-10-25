@@ -24,7 +24,6 @@ def calc_accuracy(hyps, refs):
     refs: groundtruths, type: List
     """
     assert len(hyps) == len(refs)
-    #acc = accuracy_score(y_true=refs, y_pred=hyps)
     acc_list = []
     for hyp, ref in zip(hyps, refs):
         if hyp == ref:
