@@ -3,8 +3,7 @@
 import argparse
 import json
 import numpy as np
-from collections import Counter
-from sklearn.metrics import accuracy_score
+
 
 LABEL_ACTION_PATH = "data/label_action.txt"
 LABEL_TOPIC_PATH = "data/label_topic.txt"
@@ -24,7 +23,15 @@ def calc_accuracy(hyps, refs):
     hyps: predicts, type: List
     refs: groundtruths, type: List
     """
-    acc = accuracy_score(y_true=refs, y_pred=hyps)
+    assert len(hyps) == len(refs)
+    #acc = accuracy_score(y_true=refs, y_pred=hyps)
+    acc_list = []
+    for hyp, ref in zip(hyps, refs):
+        if hyp == ref:
+            acc_list.append(1)
+        else:
+            acc_list.append(0)
+    acc = np.mean(acc_list)
     return acc
 
 
@@ -61,11 +68,16 @@ def load_data(fp, is_gold=False, lower_case=True):
                 actions.append(act)
                 topics.append(topic)
             elif "plans" in sample.keys():
-                act = sample["plans"].split("[A]")[1].split("[T]")[0].strip()
-                topic = sample["plans"].split("[T]")[1].split("[A]")[0].strip()
                 if lower_case:
-                    act = act.lower()
-                    topic = topic.lower()
+                    act_sep = "[a]"
+                    top_sep = "[t]"
+                    plans = sample["plans"].lower()
+                else:
+                    act_sep = "[A]"
+                    top_sep = "[T]"
+                    plans = sample["plans"]
+                act = plans.split(act_sep)[1].split(top_sep)[0].strip()
+                topic = plans.split(top_sep)[1].split(act_sep)[0].strip()
                 actions.append(act)
                 topics.append(topic)
             else:
@@ -74,8 +86,8 @@ def load_data(fp, is_gold=False, lower_case=True):
 
     action_labels = load_labels(LABEL_ACTION_PATH, lower_case=lower_case)
     topic_labels = load_labels(LABEL_TOPIC_PATH, lower_case=lower_case)
-    action_ids = [action_labels[act] for act in actions]
-    topic_ids = [topic_labels[top] for top in topics]
+    action_ids = [action_labels.get(act, "寒暄") for act in actions]
+    topic_ids = [topic_labels.get(top, "NULL") for top in topics]
 
     if is_gold:
         assert len(ids) == len(actions)
