@@ -14,6 +14,7 @@ def load_labels(fp, lower_case=True):
         for idx, item in enumerate(fr):
             k = item.strip().lower() if lower_case else item.strip()
             labels[k] = idx
+    labels["None"] = -1
     return labels
 
 
@@ -75,8 +76,14 @@ def load_data(fp, is_gold=False, lower_case=True):
                     act_sep = "[A]"
                     top_sep = "[T]"
                     plans = sample["plans"]
-                act = plans.split(act_sep)[1].split(top_sep)[0].strip()
-                topic = plans.split(top_sep)[1].split(act_sep)[0].strip()
+                try:
+                    act = plans.split(act_sep)[1].split(top_sep)[0].strip()
+                except IndexError:
+                    act = "None"
+                try:
+                    topic = plans.split(top_sep)[1].split(act_sep)[0].strip()
+                except IndexError:
+                    topic = "None"
                 actions.append(act)
                 topics.append(topic)
             else:
@@ -85,8 +92,8 @@ def load_data(fp, is_gold=False, lower_case=True):
 
     action_labels = load_labels(LABEL_ACTION_PATH, lower_case=lower_case)
     topic_labels = load_labels(LABEL_TOPIC_PATH, lower_case=lower_case)
-    action_ids = [action_labels.get(act, "寒暄") for act in actions]
-    topic_ids = [topic_labels.get(top, "NULL") for top in topics]
+    action_ids = [action_labels.get(act, "None") for act in actions]
+    topic_ids = [topic_labels.get(top, "None") for top in topics]
 
     if is_gold:
         assert len(ids) == len(actions)
