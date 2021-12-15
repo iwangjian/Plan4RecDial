@@ -123,20 +123,18 @@ if __name__ == "__main__":
 
     pred_actions, pred_topics = load_data(args.eval_file)
     gold_actions, gold_topics, gold_bi_actions, gold_bi_topics = load_data(args.gold_file, is_gold=True)
-    #print("gold_bi_actions: {}".format(gold_bi_actions))
-    #print("gold_bi_topics: {}".format(gold_bi_topics))
-
-    # calc accuracy
+    
+    # calculate accuracy
     action_acc = calc_accuracy(pred_actions, gold_actions)
     topic_acc = calc_accuracy(pred_topics, gold_topics)
 
-    # calc bi-accuracy
+    # calculate bi-accuracy
     action_bi_acc = calc_bi_accuracy(pred_actions, gold_bi_actions)
     topic_bi_acc = calc_bi_accuracy(pred_topics, gold_bi_topics)
 
     output_str = "Action ACC: %.2f%%\n" % (action_acc * 100)
-    output_str += "Topic ACC: %.2f%%\n" % (topic_acc * 100)
     output_str += "Action Bi-ACC: %.2f%%\n" % (action_bi_acc * 100)
+    output_str += "Topic ACC: %.2f%%\n" % (topic_acc * 100)
     output_str += "Topic Bi-ACC: %.2f%%" % (topic_bi_acc * 100)
 
     print(output_str)

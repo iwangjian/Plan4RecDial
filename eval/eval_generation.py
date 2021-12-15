@@ -159,23 +159,23 @@ if __name__ == "__main__":
     #    print("gold_kd: ", ref_kd)
     #    print("\n")
 
-    # calc f1
+    # calculate f1
     f1 = calc_f1(preds, refs)
 
-    # calc bleu
+    # calculate bleu
     bleu1, bleu2 = calc_bleu(preds, refs)
 
-    # calc distinct
+    # calculate distinct
     _, _, inter_dist1, inter_dist2 = calc_distinct(preds)
 
-    # calc knowledge f1
-    kd_f1 = calc_knowledge_f1(preds, ref_knowlwedges, all_knowledges)
+    # calculate knowledge-F1
+    kg_f1 = calc_knowledge_f1(preds, ref_knowlwedges, all_knowledges)
 
     output_str = "F1: %.2f%%\n" % (f1 * 100)
     output_str += "BLEU1: %.3f\n" % bleu1
     output_str += "BLEU2: %.3f\n" % bleu2
     output_str += "DISTINCT1: %.3f\n" % inter_dist1
     output_str += "DISTINCT2: %.3f\n" % inter_dist2
-    output_str += "Knowledge F1: %.2f%%" % (kd_f1 * 100)
+    output_str += "Knowledge F1: %.2f%%" % (kg_f1 * 100)
 
     print(output_str)
