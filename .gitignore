@@ -1,5 +1,8 @@
-# Data
+# Self-defined ignore
 data/
+caches/
+logs/
+outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
