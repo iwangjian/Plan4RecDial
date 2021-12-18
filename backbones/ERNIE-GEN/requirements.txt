@@ -1,0 +1,4 @@
+nltk==3.4
+numpy==1.14.5
+scipy==1.2.1
+paddlepaddle-gpu==2.0.2.post110
