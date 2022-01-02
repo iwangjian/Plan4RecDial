@@ -235,7 +235,7 @@ class TCP(nn.Module):
                 )
             next_tokens_scores = logits_processor(input_ids, next_token_logits)
             next_tokens_scores = F.softmax(next_tokens_scores, dim=-1)
-            next_tokens = torch.multinomial(next_tokens_scores, 1)
+            next_tokens = torch.multinomial(next_tokens_scores, 1).squeeze()
             if eos_token_id is not None:
                 next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
@@ -279,7 +279,7 @@ class TCP(nn.Module):
                 )
             next_tokens_scores = logits_processor(input_ids, next_token_logits)
             next_tokens_scores = F.softmax(next_tokens_scores, dim=-1)
-            next_tokens = torch.multinomial(next_tokens_scores, 1)
+            next_tokens = torch.multinomial(next_tokens_scores, 1).squeeze()
             if eos_token_id is not None:
                 next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
