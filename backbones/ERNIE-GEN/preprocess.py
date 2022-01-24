@@ -28,17 +28,20 @@ def conv_parse(conv_list):
 def extract_knowledge(kg_list, center_topic):
     """Extract knowledge according to the center topic"""
     sub_kg = []
-    if center_topic == "NULL" or center_topic == "null":
-        return sub_kg
-    
-    for triple in kg_list:
-        s, p, o = triple
-        if s.lower() == center_topic.lower() or o.lower() == center_topic.lower():
-            sub_kg.append(triple)
+    if center_topic == "NULL":
+        for triple in kg_list:
+            s, p, o = triple
+            if "气温:" in s or "气温:" in o:
+                sub_kg.append(triple)
+    else:
+        for triple in kg_list:
+            s, p, o = triple
+            if s.lower() == center_topic.lower() or o.lower() == center_topic.lower():
+                sub_kg.append(triple)
     return sub_kg
 
 def convert_data(data_path, extract_kg=False, tcp_path=None):
-    cur_topics = []
+    cur_actions, cur_topics = [], []
     if tcp_path is not None:
         with open(tcp_path, 'r', encoding='utf-8') as fr:
             for line in fr:
@@ -47,27 +50,36 @@ def convert_data(data_path, extract_kg=False, tcp_path=None):
                 top_sep = "[t]"
                 plans = sample["plans"].lower()
                 try:
+                    action = plans.split(act_sep)[1].split(top_sep)[0].strip()
+                except IndexError:
+                    action = "None"
+                try:
                     topic = plans.split(top_sep)[1].split(act_sep)[0].strip()
+                    topic = topic.replace("null", "NULL")
                 except IndexError:
                     topic = "None"
+                cur_actions.append(action)
                 cur_topics.append(topic)
     data = []
     with open(data_path, 'r', encoding='utf-8') as fr:
         for idx, line in enumerate(fr):
             sample = json.loads(line)
             user_profile = sample["user_profile"]
-    
+
+            knowledge = ""
             if extract_kg:
                 if tcp_path is not None:
+                    knowledge += cur_actions[idx] + cur_topics[idx] + SEP
                     # extract knowledge according to generated plans
                     kg_list = extract_knowledge(sample["knowledge_graph"], cur_topics[idx])
                 else:
+                    knowledge += sample["cur_action"] + sample["cur_topic"] + SEP
                     # extract knowledge according to current labeled topic
                     kg_list = extract_knowledge(sample["knowledge_graph"], sample["cur_topic"])
             else:
+                knowledge += sample["target"][0] + sample["target"][1] + SEP
                 kg_list = sample["knowledge_graph"]
             
-            knowledge = ""
             for k, v in user_profile.items():
                 knowledge += k
                 knowledge += v
