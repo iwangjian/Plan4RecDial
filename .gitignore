@@ -1,4 +1,5 @@
 # Self-defined ignore
+.DS_Store
 data/
 caches/
 logs/
@@ -133,6 +134,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-# MacFile
-.DS_Store

@@ -8,8 +8,8 @@ cache_dir="caches/TCP"
 # decode args
 model_dir="logs/TCP"
 output_dir="outputs/TCP"
-use_ssd="False"
-test_batch_size=8
+use_ssd="True"
+test_batch_size=1
 
 python3 main.py --mode test \
     --test_data ${test_data} \

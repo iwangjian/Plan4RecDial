@@ -39,7 +39,7 @@ def parse_config():
     # ==================== Train ====================
     parser.add_argument('--log_dir', type=str, default="logs/TCP")
     parser.add_argument('--load_checkpoint', type=str, default=None)
-    parser.add_argument('--num_epochs', type=int, default=5)
+    parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--log_steps', type=int, default=400)
     parser.add_argument('--validate_steps', type=int, default=2000)

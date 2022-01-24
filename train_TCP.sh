@@ -9,7 +9,7 @@ cache_dir="caches/TCP"
 
 # train args
 log_dir="logs/TCP"
-num_epochs=5
+num_epochs=10
 batch_size=4
 
 python3 main.py --mode train \
