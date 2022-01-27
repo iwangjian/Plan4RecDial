@@ -177,16 +177,16 @@ def main():
     test_dataset = GPT2Dataset(dataset, tokenizer)
     test_loader = DataLoader(test_dataset, collate_fn=test_dataset.collate, batch_size=1, shuffle=False)
     logger.info("Evaluating...")
-    ppls = []
+    losses = []
     with torch.no_grad():
         for batch in tqdm(test_loader):
             input_ids, token_type_ids, lm_labels = tuple(input_tensor.to(args.device) for input_tensor in batch)
             lm_output = model(input_ids, labels=lm_labels, token_type_ids=token_type_ids, return_dict=True)
             lm_loss = lm_output["loss"]
-            ppl = float(torch.exp(lm_loss))
-            ppls.append(ppl)
-    avg_ppl = np.mean(ppls)
-    logger.info("Avg PPL: {}".format(avg_ppl))
+            losses.append(float(lm_loss))
+    avg_loss = np.mean(losses)
+    logger.info("Avg loss: {}".format(avg_loss))
+    logger.info("Avg ppl: {}".format(np.math.exp(avg_loss)))
 
     # set output dir
     output_dir = args.output_dir + '_w_TCP' if args.use_tcp else args.output_dir
