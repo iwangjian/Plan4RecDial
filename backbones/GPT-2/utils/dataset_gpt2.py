@@ -38,6 +38,8 @@ class GPT2Dataset(Dataset):
         raw_sequence = [[bos]] + history + [resposne + ([eos] if with_eos else [])]
         
         # truncate previous tokens if dialogue history is too long
+        
+
         if len(raw_sequence[1]) + len(raw_sequence[-1]) > max_seq_length - 1:
             max_history_len = max_seq_length - 1 - len(raw_sequence[-1])
             sequence = [raw_sequence[0]] + [raw_sequence[1][-max_history_len:]] + [raw_sequence[-1]]
