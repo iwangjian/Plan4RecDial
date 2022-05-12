@@ -92,8 +92,8 @@ def load_data(fp, is_gold=False, lower_case=True):
 
     action_labels = load_labels(LABEL_ACTION_PATH, lower_case=lower_case)
     topic_labels = load_labels(LABEL_TOPIC_PATH, lower_case=lower_case)
-    action_ids = [action_labels.get(act, "None") for act in actions]
-    topic_ids = [topic_labels.get(top, "None") for top in topics]
+    action_ids = [action_labels.get(act, -1) for act in actions]
+    topic_ids = [topic_labels.get(top, -1) for top in topics]
 
     if is_gold:
         assert len(ids) == len(actions)
