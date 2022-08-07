@@ -1,5 +1,7 @@
-# TCP-RecDial
-Follow Me: Target-driven Conversation Planning for Proactive Recommendation Dialogue Systems
+# Plan4RecDial
+This repo contains code and data for "[Follow Me: Conversation Planning for Target-driven Recommendation Dialogue Systems]()" (to be updated) and the extended version "A Target-driven Planning Approach for Goal-oriented Dialogue Systems" (to appear).
+
+We push forward to a promising yet under-explored proactive dialogue paradigm called "target-driven recommendation dialogue systems" (or "goal-oriented dialogue systems", where the "goal" refers to recommending designated target topics). We focus on how to equip such a dialogue system with the ability to naturally lead users to achieve the goal/target through smooth topic transitions. To this end, we propose a target-driven planning framework, which plans (generates) a path consisting of dialogue actions and topics,  driving the system to proactively transit between different conversation stages. We then apply the planned content to guide dialogue generation using various backbone models in a pipeline manner.
 
 
 ## Requirements
@@ -9,56 +11,65 @@ pip install -r requirements.txt
 ```
 Note: (1) The pretrained Chinese BERT model can be downloaded from Hugging Face's [model card](https://huggingface.co/bert-base-chinese/tree/main), please download `pytorch_model.bin` and place the model file into the `config/bert-base-chinese/` folder. 
 
-(2) For fine-tuning CDial-GPT, please download the pretrained model `pytorch_model.bin` from [here](https://huggingface.co/thu-coai/CDial-GPT_LCCC-base/tree/main) and place the model file into the `config/CDial-GPT_LCCC-base/` folder. For fine-tuning Chinese version of GPT-2, please download the pretrained model `pytorch_model.bin` from [here](https://huggingface.co/uer/gpt2-chinese-cluecorpussmall/tree/main) and place the model file into the `config/gpt2-chinese-cluecorpussmall/` folder. For fine-tuning ERNIE-GEN, please download the pretrained ERNIE 1.0 model from [here](https://ernie.bj.bcebos.com/ERNIE_1.0_max-len-512.tar.gz) and unzip all files into the `config/ERNIE_1.0_max-len-512/` folder.
-
-(3) The backbone model ERNIE-GEN is based on [PaddlePaddle](https://www.paddlepaddle.org.cn/) framework, please follow the `backbones/ERNIE-GEN/requirements.txt` to install the dependencies.
+(2) For fine-tuning CDial-GPT, please download the pretrained model `pytorch_model.bin` from [here](https://huggingface.co/thu-coai/CDial-GPT_LCCC-base/tree/main) and place the model file into the `config/CDial-GPT_LCCC-base/` folder. For fine-tuning BART, please download the Chinese version pretrained model from [here](https://huggingface.co/fnlp/bart-base-chinese/tree/main) and place the model file into the `config/bart-base-chinese` folder. For fine-tuning GPT-2, please download the  Chinese version pretrained model `pytorch_model.bin` from [here](https://huggingface.co/uer/gpt2-chinese-cluecorpussmall/tree/main) and place the model file into the `config/gpt2-chinese-cluecorpussmall/` folder.
 
 
-## Dataset
-We have uploaded the preprocessed DuRecDial dataset to the `data/` folder, where the `.zip` files need to be unzipped. For more details about the original DuRecDial dataset, please refer to [here](https://github.com/PaddlePaddle/Research/tree/master/NLP/ACL2020-DuRecDial).
+## Dataset and Processing
+We describe how we re-purpose the DuRecDial dataset in the extended version paper, and we have uploaded the re-purposed dataset to the `data/` folder. All `sample_*.json` files are used in the experiments, where necessary key-value pairs in a JSON line are illustrated as follows:
+```
+{
+    "user_profile":  // User profile in the form of key-value pairs
+    "knowledge":  // Domain knowledge in the form of <s, r, o> triples
+    "target":  // Designated target action and target topic for the whole conversation
+    "conversation":  // Dialogue history consisting of user-system utterances
+    "action_path":  // Dialogue action path from the current turn to the end turn of the conversation
+    "topic_path":  // Dialogue topic path from the current turn to the end turn of the conversation
+    "response":  // System utterance at the current turn
+}
+```
+For more details about the original DuRecDial dataset, please refer to [here](https://github.com/PaddlePaddle/Research/tree/master/NLP/ACL2020-DuRecDial).
 
 ## Quickstart
 
 ### Conversation Planning
 
-For training the TCP model, please refer to the `main.py` and set parameters in the `train_TCP.sh` accordingly, then run:
+For training the TCP model, please refer to the `main.py` and set parameters in the `scripts/train_TCP.sh` accordingly, then run:
 ```
-sh train_TCP.sh
+sh scripts/train_TCP.sh
 ```
 
-For generating plans using the TCP model, please refer to the `main.py` and set parameters in the `test_TCP.sh` accordingly, then run:
+For plan path generation, please refer to the `main.py` and set parameters in the `scripts/test_TCP.sh` accordingly, then run:
 ```
-sh test_TCP.sh
+sh scripts/test_TCP.sh
 ```
-Note: If you additionally adopt set-search decoding (`--use_ssd=True`), the parameter `test_batch_size` shoud be set to `1`.
+Note: If adopt the set-search decoding strategy (`--use_ssd="true"`), the parameter `test_batch_size` shoud be set to `1`.
 
 
 ### Dialogue Generation
 
-Quick running scripts of dialogue training include `train_CDial-GPT.sh`, `train_GPT2.sh`, `preprocess_ERNIE-GEN.sh` and `train_ERNIE-GEN.sh`.
-For training baselines, please ensure `use_tcp="false"`, while for training TCP-enhanced dialogue models, please set `use_tcp="true"`. Then, please run:
+Quickstart scripts for dialogue training are included under the folder `scripts/`.
+Note that for training baseline models, please set `use_tcp="false"`, while for training TCP-enhanced dialogue models, please set `use_tcp="true"` accordingly. Then, please run:
 ```
 # CDial-GPT
-sh train_CDial-GPT.sh
+sh scripts/train_CDial-GPT.sh
+
+# BART
+sh scripts/train_BART.sh
 
 # GPT-2
-sh train_GPT2.sh
-
-# ERNIE-GEN
-sh preprocess_ERNIE-GEN.sh
-sh train_ERNIE-GEN.sh
+sh scripts/train_GPT2.sh
 ```
 
-For dialogue generation, quick running scripts include `test_CDial-GPT.sh`, `test_GPT2.sh`, and `test_ERNIE-GEN.sh`, please first set `use_tcp="false"` or `use_tcp="true"`. Note that `use_tcp="true"` denotes TCP-enhanced dialogue generation, where `tcp_path` should be specified as the file path of the plans generated by the TCP model. Then, please run:
+For dialogue generation, quickstart scripts are also included under the folder `scripts/`. For baseline models, please set `use_tcp="false"`. For TCP-enhanced dialogue generation, please set `use_tcp="true"` and `tcp_path=${TCP_PATH}` (Note that `${TCP_PATH}` should be specified as the actual file path of the generated plans by TCP). Then, please run:
 ```
 # CDial-GPT
-sh test_CDial-GPT.sh
+sh scripts/test_CDial-GPT.sh
+
+# BART
+sh scripts/test_BART.sh
 
 # GPT-2
-sh test_GPT2.sh
-
-# ERNIE-GEN
-sh test_ERNIE-GEN.sh
+sh scripts/test_GPT2.sh
 ```
 
 ### Evaluation
@@ -69,6 +80,6 @@ python eval/eval_planning.py --eval_file ${eval_file} --gold_file data/sample_te
 
 For evaluation of dialogue generation, please run:
 ```
-python eval/eval_generation.py --eval_file ${eval_file} --gold_file data/sample_test.json
+python eval/eval_dialogue.py --eval_file ${eval_file} --gold_file data/sample_test.json
 ```
-Note: `${eval_file}` should be replaced by the actual file path to be evaluated.
+Note: `${eval_file}` should be specified as the actual file path to be evaluated.
