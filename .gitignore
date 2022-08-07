@@ -1,6 +1,7 @@
 # Self-defined ignore
 .DS_Store
-data/
+data/*.json
+data/*.txt
 caches/
 logs/
 outputs/

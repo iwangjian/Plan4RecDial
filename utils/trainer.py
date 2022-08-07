@@ -24,8 +24,7 @@ class Trainer(object):
             lr, 
             warm_up_ratio=0.1, 
             weight_decay=0.01, 
-            max_grad_norm=0.5,
-            use_gpu=True
+            max_grad_norm=0.5
         ):
 
         self.model = model
@@ -46,12 +45,6 @@ class Trainer(object):
             num_warmup_steps=self.warm_up_ratio * total_steps, 
             num_training_steps=total_steps)
         self.best_metric = 0.0
-
-        if torch.cuda.is_available() and use_gpu:
-            self.device = torch.device("cuda")
-            self.model.cuda()
-        else:
-            self.device = torch.device("cpu")
         
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
@@ -68,13 +61,8 @@ class Trainer(object):
             logging.info("\nEpoch {}:".format(epoch + 1))
             for batch_step, inputs in enumerate(tqdm(self.train_loader)):
                 self.model.train()
-                inputs['user_profile'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['user_profile']]
-                inputs['knowledge'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['knowledge']]
-                inputs['conversation'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['conversation']]
-                inputs['plans'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['plans']]
-                inputs['target'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['target']]
-
-                loss = self.model(inputs)['loss']
+                model_output = self.model(inputs)
+                loss = model_output["loss"]
                 loss.backward()
                 if self.max_grad_norm > 0:
                     nn_utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
@@ -84,19 +72,22 @@ class Trainer(object):
 
                 if batch_step > 0 and batch_step % self.log_steps == 0:
                     logging.info("Batch Step: {}\tloss: {:.3f}".format(batch_step, loss.item()))
+
                 if batch_step > 0 and batch_step % self.validate_steps == 0:
                     logging.info("Evaluating...")
                     predicts_dict = self.evaluate(loader=self.dev_loader)
-                    logging.info("Evaluation Acc: {:.3f}".format(predicts_dict["avg_acc"]))
+                    logging.info("Evaluation Acc: {:.3f} loss: {:.3f}".format(
+                        predicts_dict["avg_acc"], predicts_dict["avg_loss"])
+                    )
                     if predicts_dict["avg_acc"] > self.best_metric:
                         self.best_metric = predicts_dict["avg_acc"]
-                        logging.info("Epoch {} Batch Step {} -- Best Acc: {:.3f} -- PPL: {:.3f}".format(epoch + 1, batch_step, self.best_metric, predicts_dict['avg_ppl']))
+                        logging.info("Epoch {} Batch Step {} -- Best Acc: {:.3f} -- loss: {:.3f}".format(epoch + 1, batch_step, self.best_metric, predicts_dict['avg_loss']))
                         torch.save(self.model, best_model_store_path)
                         logging.info("Saved to [%s]" % best_model_store_path)
             predicts_dict = self.evaluate(loader=self.dev_loader)
             if predicts_dict["avg_acc"] > self.best_metric:
                 self.best_metric = predicts_dict["avg_acc"]
-                logging.info("Epoch {} Best Avg Acc: {:.3f} -- PPL: {:.3f}".format(epoch, self.best_metric, predicts_dict['avg_ppl']))
+                logging.info("Epoch {} Best Avg Acc: {:.3f} -- loss: {:.3f}".format(epoch, self.best_metric, predicts_dict['avg_loss']))
                 torch.save(self.model, best_model_store_path)
                 logging.info("Saved to [%s]" % best_model_store_path)
             logging.info("Epoch {} training done.".format(epoch + 1))
@@ -111,33 +102,26 @@ class Trainer(object):
             loader: the DataLoader containing the data to run evaluation.         
         Returns:
             avg_acc: average accuracy.
-            avg_ppl: average perplexity.
+            avg_loss: average loss.
         """
         self.model.eval()
         
         total_acc = 0.0
         count_tok = 0.0
-        ppls = []
-
+        loss = []
         for inputs in tqdm(loader):
-            inputs['user_profile'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['user_profile']]
-            inputs['knowledge'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['knowledge']]
-            inputs['conversation'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['conversation']]
-            inputs['plans'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['plans']]
-            inputs['target'] = [d.to(self.device).transpose(0,1).contiguous() for d in inputs['target']]
             with torch.no_grad():
                 output = self.model(inputs)
-                acc = output['accuracy']
-                total_tokens = output['total_tokens']
+                acc = output["acc"]
+                total_tokens = output["total_tokens"]
                 total_acc += acc
                 count_tok += total_tokens
-                ppl = float(torch.exp(output['loss']))
-                ppls.append(ppl)
-        
-        avg_ppl = np.mean(ppls)
+                loss.append(float(output["loss"]))
         avg_acc = total_acc / count_tok
+        avg_loss = np.mean(loss)
+        
         return_dict = {
             "avg_acc": avg_acc,
-            "avg_ppl": avg_ppl,
+            "avg_loss": avg_loss,
         }
         return return_dict

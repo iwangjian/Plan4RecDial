@@ -8,7 +8,7 @@ from typing import Optional, Iterable, Callable, List
 from model.GAT import GraphAttenTransformer
 from model.MemNet import UserMemory
 from model.Planner import Planner
-from utils.data_utils import ACT, TOPIC
+from utils.data_utils import ACT, TPC
 
 from transformers import (
     BertModel,
@@ -44,8 +44,6 @@ class TCP(nn.Module):
         self.pad_token_id = args.pad_token_id
         self.bos_token_id = args.bos_token_id
         self.eos_token_id = args.eos_token_id
-        self.forced_bos_token_id = args.forced_bos_token_id
-        self.forced_eos_token_id = args.forced_eos_token_id
 
         self.kg_encoder = GraphAttenTransformer.from_pretrained(args.bert_dir)
         self.kg_encoder.resize_token_embeddings(self.vocab_size)
@@ -58,7 +56,12 @@ class TCP(nn.Module):
             dropout=args.dropout, init_std=args.init_std,
             padding_idx=args.pad_token_id)
         
-        self.planner = Planner(args=args)
+        # share knowledge embedding or not
+        embed_tokens = None
+        if args.share_decoder_embedding:
+            embed_tokens=self.kg_encoder.get_input_embeddings()
+        self.planner = Planner(args=args, embed_tokens=embed_tokens)
+        
         self.lm_vocab = nn.Linear(args.embed_dim, self.vocab_size, bias=True)
     
     def _init_all_weights(self):
@@ -68,12 +71,13 @@ class TCP(nn.Module):
 
     def forward(self, batch, is_test=False):
         """model training"""
-        up_ids, _, _, up_mask = batch['user_profile']
-        kg_ids, kg_segs, kg_poss, kg_hops, kg_mask = batch['knowledge']
-        hs_ids, hs_segs, hs_poss, hs_mask = batch['conversation']
-        pl_ids, _, _, pl_mask, gold_ids = batch['plans']
-        tg_ids, _, _, tg_mask = batch['target']
+        up_ids, up_mask = batch["user_profile"]
+        kg_ids, kg_segs, kg_poss, kg_hops, kg_mask = batch["knowledge"]
+        hs_ids, hs_segs, hs_poss, hs_mask = batch["conversation"]
         
+        tg_ids, tg_mask = batch["target"]
+        pl_ids, pl_mask, gold_ids = batch["plan"]
+
         kg_output = self.kg_encoder(
             input_ids=kg_ids, 
             attention_mask=kg_mask, 
@@ -103,23 +107,23 @@ class TCP(nn.Module):
             hs_encoder_hidden_states=conv_output,
             hs_encoder_attention_mask=hs_mask,
         )
-        lm_scores = self.lm_vocab(planner_output[0]).contiguous()
+        lm_logits = self.lm_vocab(planner_output[0]).contiguous()
         
         if is_test:
             output = {
-                "lm_scores": lm_scores,
+                "lm_logits": lm_logits,
             }
         else:
             loss_fct = CrossEntropyLoss()
-            lm_loss = loss_fct(lm_scores.view(-1, self.vocab_size), gold_ids.view(-1))
-            pred = torch.softmax(lm_scores, -1)
+            lm_loss = loss_fct(lm_logits.view(-1, self.vocab_size), gold_ids.view(-1))
+            pred = torch.softmax(lm_logits, -1)
             _, pred_y = pred.max(-1)
             acc = (torch.eq(pred_y, gold_ids).float()*pl_mask).sum().item()
             tot_tokens = pl_mask.float().sum().item()
             output = {
-                "lm_scores": lm_scores,
+                "lm_logits": lm_logits,
                 "loss": lm_loss,
-                "accuracy": acc,
+                "acc": acc,
                 "total_tokens": tot_tokens
             }
         return output
@@ -160,8 +164,8 @@ class TCP(nn.Module):
             min_length=min_length,
             max_length=max_length,
             eos_token_id=self.eos_token_id,
-            forced_bos_token_id=self.forced_bos_token_id,
-            forced_eos_token_id=self.forced_eos_token_id,
+            forced_bos_token_id=self.bos_token_id,
+            forced_eos_token_id=self.eos_token_id,
             prefix_allowed_tokens_fn=None,
             num_beams=1,
             num_beam_groups=1,
@@ -222,13 +226,15 @@ class TCP(nn.Module):
         eos_token_id = eos_token_id if eos_token_id is not None else self.eos_token_id
         scores = () if (return_dict_in_generate and output_scores) else None
         
-        input_ids = inputs['plans'][0]
+        input_ids = inputs["plan"][0]
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
+        
         while True:
-            inputs["plans"][0], inputs["plans"][3] = input_ids, None
+            inputs["plan"][0] = input_ids
+            inputs["plan"][1] = None
             # compute logits
             model_out = self(inputs, is_test=True)
-            next_token_logits = model_out["lm_scores"][:, -1, :]
+            next_token_logits = model_out["lm_logits"][:, -1, :]
             if top_k > 0:
                 next_token_logits = TopKLogitsWarper(top_k=top_k, filter_value=filter_value, min_tokens_to_keep=min_tokens_to_keep)(
                     None, next_token_logits
@@ -266,13 +272,15 @@ class TCP(nn.Module):
         eos_token_id = eos_token_id if eos_token_id is not None else self.eos_token_id
         scores = () if (return_dict_in_generate and output_scores) else None
         
-        input_ids = inputs['plans'][0]
+        input_ids = inputs["plan"][0]
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
+        
         while True:
-            inputs["plans"][0], inputs["plans"][3] = input_ids, None
+            inputs["plan"][0] = input_ids
+            inputs["plan"][1] = None
             # compute logits
             model_out = self(inputs, is_test=True)
-            next_token_logits = model_out["lm_scores"][:, -1, :]
+            next_token_logits = model_out["lm_logits"][:, -1, :]
             if 0 < top_p <= 1.0:
                 next_token_logits = TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=min_tokens_to_keep)(
                     None, next_token_logits
@@ -312,7 +320,7 @@ class TCP(nn.Module):
         eos_token_id = eos_token_id if eos_token_id is not None else self.eos_token_id
         scores = () if (return_dict_in_generate and output_scores) else None
         
-        input_ids = inputs['plans'][0]
+        input_ids = inputs["plan"][0]
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         
         def set_search(string, str_list):
@@ -328,41 +336,45 @@ class TCP(nn.Module):
                 return None
         
         if use_ssd:
-            action_list = [a+TOPIC for a in action_set] if action_set is not None else []
-            topic_list = [t+ACT for t in topic_set] if topic_set is not None else []
+            action_list = [a for a in action_set] if action_set is not None else []
+            topic_list = [t for t in topic_set] if topic_set is not None else []
             span = ""
-            now_type = "Action"
+            now_type = ACT
             total_str = ACT
             while True:
-                inputs["plans"][0], inputs["plans"][3] = input_ids, None
+                inputs["plan"][0] = input_ids
+                inputs["plan"][1] = None
                 # compute logits
                 model_out = self(inputs, is_test=True)
-                next_token_logits = model_out["lm_scores"][:, -1, :]
+                next_token_logits = model_out["lm_logits"][:, -1, :]
                 next_tokens_scores = logits_processor(input_ids, next_token_logits)
                 next_tokens = torch.argmax(next_tokens_scores, dim=-1)
                 if next_tokens[0] == eos_token_id or input_ids.size()[1] >= max_length:
                     break
                 next_token_str = tokenizer.convert_ids_to_tokens(next_tokens[0].item())
+                if next_token_str.upper() == "NULL":
+                    next_token_str = "NULL"
                 total_str += next_token_str
+                
                 if next_token_str == ACT:
                     input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
-                    now_type = "Action"
+                    now_type = ACT
                     span = ""
-                elif next_token_str == TOPIC:
+                elif next_token_str == TPC:
                     input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
-                    now_type = "Topic"
+                    now_type = TPC
                     span = ""
                 else:
                     span = span + next_token_str
-                    if now_type == "Action":
+                    if now_type == ACT:
                         # set-based search for an action
                         match_str = set_search(span, action_list)
                         if  match_str is not None:
                             total_str += match_str[1:]
-                            match_ids = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(match_str.replace(" ", "").lower()))
+                            match_ids = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(match_str))
                             match_ids = torch.LongTensor(match_ids).unsqueeze(0).to(input_ids.device)
                             input_ids = torch.cat([input_ids, match_ids], dim=-1)
-                            now_type = "Topic"
+                            now_type = TPC
                             span = ""
                         else:
                             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
@@ -371,20 +383,21 @@ class TCP(nn.Module):
                         match_str = set_search(span, topic_list)
                         if  match_str is not None:
                             total_str += match_str[1:]
-                            match_ids = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(match_str.replace(" ", "").lower()))
+                            match_ids = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(match_str))
                             match_ids = torch.LongTensor(match_ids).unsqueeze(0).to(input_ids.device)
                             input_ids = torch.cat([input_ids, match_ids], dim=-1)
-                            now_type = "Action"
+                            now_type = ACT
                             span = ""
                         else:
                             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
             return total_str
         else:
             while True:
-                inputs["plans"][0], inputs["plans"][3] = input_ids, None
+                inputs["plan"][0] = input_ids
+                inputs["plan"][1] = None
                 # compute logits
                 model_out = self(inputs, is_test=True)
-                next_token_logits = model_out["lm_scores"][:, -1, :]
+                next_token_logits = model_out["lm_logits"][:, -1, :]
                 next_tokens_scores = logits_processor(input_ids, next_token_logits)
                 next_tokens = torch.argmax(next_tokens_scores, dim=-1)
                 if eos_token_id is not None:
@@ -397,7 +410,7 @@ class TCP(nn.Module):
             return input_ids
 
 
-# ============ Some utility functions ============
+# ----------- utility functions -----------
 
 def get_logits_processor(
     repetition_penalty: float,

@@ -505,7 +505,7 @@ class DecoderLayer(nn.Module):
         hs_hidden_states = residual + hs_hidden_states
         hs_hidden_states = self.hs_self_attn_layer_norm(hs_hidden_states)
 
-        ######### Cross-Attention Block ########
+        # Cross-Attention Block
         kg_cross_attn_present_key_value = None
         if kg_encoder_hidden_states is not None:
             residual = kg_hidden_states
@@ -562,7 +562,7 @@ class DecoderLayer(nn.Module):
             hs_hidden_states = self.ca_cross_attn_layer_norm(hs_hidden_states)
             hs_present_key_value = hs_present_key_value + hs_cross_attn_present_key_value
 
-        ######### Information Fusion and FFN Block ########
+        # Information Fusion and FFN Block
         fused_hidden_states = self.fusion_layer(kg_hidden_states, hs_hidden_states, up_hidden_states)
         
         ffn_hidden_states = self.activation_fn(self.fc1(fused_hidden_states))

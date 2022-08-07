@@ -162,18 +162,19 @@ class BertEmbeddings(nn.Module):
         if token_type_ids is None:
             token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=self.position_ids.device)
         
-        if hops_ids is None:
-            hops_ids = torch.zeros(input_shape, dtype=torch.long, device=self.position_ids.device)
-
         if inputs_embeds is None:
             inputs_embeds = self.word_embeddings(input_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
-        hops_embeddings = self.hops_embeddings(hops_ids)
-
-        embeddings = inputs_embeds + token_type_embeddings + hops_embeddings
+        embeddings = inputs_embeds + token_type_embeddings
+        
         if self.position_embedding_type == "absolute":
             position_embeddings = self.position_embeddings(position_ids)
             embeddings += position_embeddings
+        
+        if hops_ids is not None:
+            hops_embeddings = self.hops_embeddings(hops_ids)
+            embeddings += hops_embeddings
+        
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
         return embeddings
