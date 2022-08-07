@@ -4,12 +4,7 @@ import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 
-USER = "[USER]"  # additional special token
-BOT = "[BOT]"    # additional special token
-
-NEW_ADD_TOKENS = ["[USER]", "[BOT]"]   # additional special tokens
 IGNORE_INDEX = -100
-
 
 class CDialGPTDataset(Dataset):
     def __init__(self, data, tokenizer, max_seq_len=432, max_tgt_len=80, batch_first=True, lm_labels=True):

@@ -14,8 +14,8 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer, BartForConditionalGeneration
-from data_utils import load_data
-from dataset_bart import NEW_ADD_TOKENS, BartDataset
+from data_utils import load_data, NEW_ADD_TOKENS
+from dataset_bart import BartDataset
 
 
 def str2bool(v):

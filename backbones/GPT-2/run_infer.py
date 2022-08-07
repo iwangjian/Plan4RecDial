@@ -15,8 +15,8 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from transformers import BertTokenizer, GPT2LMHeadModel
-from data_utils import load_data
-from dataset_gpt2 import NEW_ADD_TOKENS, GPT2Dataset
+from data_utils import load_data, NEW_ADD_TOKENS
+from dataset_gpt2 import GPT2Dataset
 
 
 def top_filtering(logits, top_k=0, top_p=0.0, threshold=-float('Inf'), filter_value=-float('Inf')):

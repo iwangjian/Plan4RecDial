@@ -19,8 +19,8 @@ from ignite.contrib.handlers import ProgressBar, PiecewiseLinear, LRScheduler
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler
 from transformers import BartForConditionalGeneration, BertTokenizer, AdamW, WEIGHTS_NAME, CONFIG_NAME
 from torch.utils.data import DataLoader
-from data_utils import load_data
-from dataset_bart import BartDataset, IGNORE_INDEX, NEW_ADD_TOKENS
+from data_utils import load_data, NEW_ADD_TOKENS
+from dataset_bart import BartDataset, IGNORE_INDEX
 
 logger = logging.getLogger(__file__)
 
