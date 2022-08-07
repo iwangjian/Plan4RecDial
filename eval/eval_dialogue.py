@@ -8,7 +8,7 @@ from nltk.translate import bleu_score
 from nltk.translate.bleu_score import SmoothingFunction
 
 
-def calc_rec_sr(eval_fp, gold_fp):
+def calc_succ(eval_fp, gold_fp):
     all_eval, all_gold = [], []
     with open(eval_fp, 'r', encoding='utf-8') as fr:
         for line in fr:
@@ -19,22 +19,29 @@ def calc_rec_sr(eval_fp, gold_fp):
             raw_sample = json.loads(line)
             sample = {
                 "target": raw_sample["target"],
-                "cur_action": raw_sample["cur_action"],
-                "cur_topic": raw_sample["cur_topic"],
+                "action_path": raw_sample["action_path"],
+                "topic_path": raw_sample["topic_path"],
                 "response": raw_sample["response"]
             }
             all_gold.append(sample)
     assert len(all_eval) == len(all_gold)
 
+    topic_hit, topic_total = 0, 0
     movie_hit, music_hit, poi_hit, food_hit = 0, 0, 0, 0
     movie_total, music_total, poi_total, food_total = 0, 0, 0, 0
+    
     for eval_sample, gold_sample in zip(all_eval, all_gold):
-        if gold_sample["cur_topic"] == gold_sample["target"][1] and \
+        if gold_sample["action_path"][0] == gold_sample["target"][0] and \
+            gold_sample["topic_path"][0] == gold_sample["target"][1] and \
                 gold_sample["target"][1].lower() in gold_sample["response"].lower():
             # eval this turn
             eval_action = gold_sample["target"][0]
             eval_topic = gold_sample["target"][1]
-            #print("gold: {}  pred: {}".format(gold_sample["response"], eval_sample["response"]))
+
+            topic_total += 1
+            if eval_topic.lower() in eval_sample["response"].lower():
+                topic_hit += 1
+            
             if eval_action == "电影推荐":
                 movie_total += 1
                 if eval_topic.lower() in eval_sample["response"].lower():
@@ -51,15 +58,16 @@ def calc_rec_sr(eval_fp, gold_fp):
                 food_total += 1
                 if eval_topic.lower() in eval_sample["response"].lower():
                     food_hit += 1
+    succ_rate = float(topic_hit) / topic_total
     movie_rec_sr = float(movie_hit) / movie_total
     music_rec_sr = float(music_hit) / music_total
     poi_rec_sr = float(poi_hit) / poi_total
     food_rec_sr = float(food_hit) / food_total
-
-    print("Rec.SR - Movie: {}/{} = {:.2f}%".format(movie_hit, movie_total, movie_rec_sr*100))
-    print("Rec.SR - Music: {}/{} = {:.2f}%".format(music_hit, music_total, music_rec_sr*100))
-    print("Rec.SR - POI: {}/{} = {:.2f}%".format(poi_hit, poi_total, poi_rec_sr*100))
-    print("Rec.SR - Food: {}/{} = {:.2f}%".format(food_hit, food_total, food_rec_sr*100))
+    print("Succ.: {:.2f}%".format(succ_rate*100))
+    print("SR - Movie: {}/{} = {:.2f}%".format(movie_hit, movie_total, movie_rec_sr*100))
+    print("SR - Music: {}/{} = {:.2f}%".format(music_hit, music_total, music_rec_sr*100))
+    print("SR - POI: {}/{} = {:.2f}%".format(poi_hit, poi_total, poi_rec_sr*100))
+    print("SR - Food: {}/{} = {:.2f}%".format(food_hit, food_total, food_rec_sr*100))
 
 
 def calc_f1(hyps, refs):
@@ -185,7 +193,7 @@ def load_data(fp, is_gold=False, lower_case=True):
             resp = [tok for tok in response]   # token-level list
             samples.append(resp)
             if is_gold:
-                knowledge = sample["knowledge_graph"]
+                knowledge = sample["knowledge"]
                 all, gold = label_knowledge(response, knowledge, lower_case=lower_case)
                 all_knowledges.append(all)
                 gold_knowledges.append(gold)
@@ -206,12 +214,6 @@ if __name__ == "__main__":
     preds = load_data(args.eval_file)
     refs, all_knowledges, ref_knowlwedges = load_data(args.gold_file, is_gold=True)
     assert len(preds) == len(refs)
-    ################
-    #for pred, ref, ref_kd in zip(preds, refs, ref_knowlwedges):
-    #    print("pred: ", "".join(pred))
-    #    print("gold: ", "".join(ref))
-    #    print("gold_kd: ", ref_kd)
-    #    print("\n")
 
     # calculate f1
     f1 = calc_f1(preds, refs)
@@ -234,5 +236,5 @@ if __name__ == "__main__":
 
     print(output_str)
 
-    # calculate rec success rate
-    calc_rec_sr(args.eval_file, args.gold_file)
+    # calculate target success rate
+    calc_succ(args.eval_file, args.gold_file)

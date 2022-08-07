@@ -51,68 +51,66 @@ def calc_bi_accuracy(hyps, refs):
     acc = np.mean(acc_list)
     return acc
 
-
-def load_data(fp, is_gold=False, lower_case=True):
-    ids = []
+def load_eval_data(fp, lower_case=True):
     actions = []
     topics = []
-    
     with open(fp, 'r', encoding='utf-8') as fr:
         for line in fr:
             sample = json.loads(line)
-            if is_gold:
-                ids.append(int(sample["id"]))
-            if "cur_action" in sample.keys() and "cur_topic" in sample.keys():
-                act = sample["cur_action"].lower() if lower_case else sample["cur_action"]
-                topic = sample["cur_topic"].lower() if lower_case else sample["cur_topic"]
-                actions.append(act)
-                topics.append(topic)
-            elif "plans" in sample.keys():
-                if lower_case:
-                    act_sep = "[a]"
-                    top_sep = "[t]"
-                    plans = sample["plans"].lower()
-                else:
-                    act_sep = "[A]"
-                    top_sep = "[T]"
-                    plans = sample["plans"]
-                try:
-                    act = plans.split(act_sep)[1].split(top_sep)[0].strip()
-                except IndexError:
-                    act = "None"
-                try:
-                    topic = plans.split(top_sep)[1].split(act_sep)[0].strip()
-                except IndexError:
-                    topic = "None"
-                actions.append(act)
-                topics.append(topic)
-            else:
-                raise KeyError("No valid keys!")
+            act = sample["action"]
+            topic = sample["topic"]
+            if lower_case:
+                act = act.lower()
+                topic = topic.lower()
+            actions.append(act)
+            topics.append(topic)
     assert len(actions) == len(topics)
 
     action_labels = load_labels(LABEL_ACTION_PATH, lower_case=lower_case)
     topic_labels = load_labels(LABEL_TOPIC_PATH, lower_case=lower_case)
     action_ids = [action_labels.get(act, -1) for act in actions]
     topic_ids = [topic_labels.get(top, -1) for top in topics]
+    
+    return (action_ids, topic_ids)
 
-    if is_gold:
-        assert len(ids) == len(actions)
-        bi_actions = []
-        bi_topics = []
-        prev_id = -1
-        for idx, cur_id in enumerate(ids):
-            if cur_id == prev_id:
-                bi_acts = [action_ids[idx-1], action_ids[idx]]
-                bi_tops = [topic_ids[idx-1], topic_ids[idx]]
-            else:
-                bi_acts = [action_ids[idx]]
-                bi_tops = [topic_ids[idx]]
-            bi_actions.append(bi_acts)
-            bi_topics.append(bi_tops)
-            prev_id = cur_id
-        return (action_ids, topic_ids, bi_actions, bi_topics)
-    else:
-        return (action_ids, topic_ids)
+
+def load_gold_data(fp, lower_case=True):
+    ids = []
+    actions = []
+    topics = []
+    with open(fp, 'r', encoding='utf-8') as fr:
+        for line in fr:
+            sample = json.loads(line)
+            ids.append(int(sample["id"]))
+            act = sample["action_path"][0]       # current action
+            topic = sample["topic_path"][0]      # current topic
+            if lower_case:
+                act = act.lower()
+                topic = topic.lower()
+            actions.append(act)
+            topics.append(topic)
+    assert len(ids) == len(actions) == len(topics)
+
+    action_labels = load_labels(LABEL_ACTION_PATH, lower_case=lower_case)
+    topic_labels = load_labels(LABEL_TOPIC_PATH, lower_case=lower_case)
+    action_ids = [action_labels[act] for act in actions]
+    topic_ids = [topic_labels[top] for top in topics]
+        
+    bi_action_ids = []
+    bi_topic_ids = []
+    prev_id = -1
+    for idx, cur_id in enumerate(ids):
+        if cur_id == prev_id:
+            bi_acts = [action_ids[idx-1], action_ids[idx]]
+            bi_tops = [topic_ids[idx-1], topic_ids[idx]]
+        else:
+            bi_acts = [action_ids[idx]]
+            bi_tops = [topic_ids[idx]]
+        bi_action_ids.append(bi_acts)
+        bi_topic_ids.append(bi_tops)
+        prev_id = cur_id
+    
+    return (action_ids, topic_ids, bi_action_ids, bi_topic_ids)
 
 
 if __name__ == "__main__":
@@ -121,8 +119,8 @@ if __name__ == "__main__":
     parser.add_argument("--gold_file", type=str)
     args = parser.parse_args()
 
-    pred_actions, pred_topics = load_data(args.eval_file)
-    gold_actions, gold_topics, gold_bi_actions, gold_bi_topics = load_data(args.gold_file, is_gold=True)
+    pred_actions, pred_topics = load_eval_data(args.eval_file)
+    gold_actions, gold_topics, gold_bi_actions, gold_bi_topics = load_gold_data(args.gold_file)
     
     # calculate accuracy
     action_acc = calc_accuracy(pred_actions, gold_actions)
