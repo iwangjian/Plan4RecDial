@@ -1,5 +1,5 @@
 # Plan4RecDial
-This repo contains code and data for "[Follow Me: Conversation Planning for Target-driven Recommendation Dialogue Systems]()" (to be updated) and the extended version "A Target-driven Planning Approach for Goal-oriented Dialogue Systems" (to appear).
+This repo contains code and data for "[Follow Me: Conversation Planning for Target-driven Recommendation Dialogue Systems](https://arxiv.org/abs/2208.03516)" and the extended version "A Target-driven Planning Approach for Goal-oriented Dialogue Systems" (to appear).
 
 We push forward to a promising yet under-explored proactive dialogue paradigm called "target-driven recommendation dialogue systems" (or "goal-oriented dialogue systems", where the "goal" refers to recommending designated target topics). We focus on how to equip such a dialogue system with the ability to naturally lead users to achieve the goal/target through smooth topic transitions. To this end, we propose a target-driven planning framework, which plans (generates) a path consisting of dialogue actions and topics,  driving the system to proactively transit between different conversation stages. We then apply the planned content to guide dialogue generation using various backbone models in a pipeline manner.
 
