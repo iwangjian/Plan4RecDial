@@ -3,6 +3,7 @@ import torch
 from torch import nn
 from transformers import BertPreTrainedModel, BertLayer
 from transformers.modeling_outputs import BaseModelOutputWithPastAndCrossAttentions, BaseModelOutputWithPoolingAndCrossAttentions
+from transformers import BertModel, BertConfig
 
 torch.set_printoptions(threshold=100)
 
@@ -126,12 +127,12 @@ class BertEmbeddings(nn.Module):
     """
     Construct the embeddings from word, position, token_type, and hops.
     """
-    def __init__(self, config):
+    def __init__(self, config, max_hop_size=32):
         super().__init__()
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
-        self.hops_embeddings = nn.Embedding(config.hops_size, config.hidden_size)
+        self.hops_embeddings = nn.Embedding(max_hop_size, config.hidden_size)
         
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -184,10 +185,10 @@ class GraphAttenTransformer(BertPreTrainedModel):
     """
     Graph Attention Transformer.
     """
-    def __init__(self, config, add_pooling_layer=True):
+    def __init__(self, config, max_knowledge_hop=32, add_pooling_layer=True):
         super().__init__(config)
         self.config = config
-        self.embeddings = BertEmbeddings(config)
+        self.embeddings = BertEmbeddings(config, max_hop_size=max_knowledge_hop)
         self.encoder = BertEncoder(config)
         self.pooler = BertPooler(config) if add_pooling_layer else None
         

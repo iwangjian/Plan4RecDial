@@ -172,7 +172,7 @@ def run_test(args):
     if args.use_ssd:
         if args.test_batch_size != 1:
             raise ValueError("Error! If you use set-search dcoding, `test_batch_size` must be 1.")
-        data_dir = ''.join(str(args.test_data).split('/')[:-1])
+        data_dir = '/'.join(str(args.test_data).split('/')[:-1])
         action_set = get_action_set(data_dir)
         topic_sets = get_topic_set(args.test_data)       
 

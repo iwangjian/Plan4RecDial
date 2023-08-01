@@ -28,7 +28,7 @@ def get_tokenizer(config_dir):
     return tokenizer, num_added_tokens, special_token_id_dict
 
 def get_action_set(data_dir):
-    action_path = os.path.join(data_dir, "label_action.txt")
+    action_path = os.path.join(data_dir, "vocab_action.txt")
     if os.path.isfile(action_path):
         action_set = []
         with open(action_path, 'r', encoding='utf-8') as fp:

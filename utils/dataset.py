@@ -184,9 +184,10 @@ class DuRecDialDataset(Dataset):
                 subjects.append(s)
             if o not in subjects:
                 subjects.append(o)
-        num_subjects = len(subjects)
         target_topic = target[1]
-        assert target_topic in subjects
+        if not target_topic in subjects:
+            subjects.append(target_topic)
+        num_subjects = len(subjects)
         
         knowledge_hop = {}
         knowledge_hop[target_topic] = 1
